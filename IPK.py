@@ -18,7 +18,6 @@ def get_args():
 
 
 def add_args(parser):
-    parser.add_argument(dest="--help", help="Shows help")
     parser.add_argument(dest="api_key", help="api_key")
     parser.add_argument(dest="city", help="Specifies in which city you want to display weather")
 
