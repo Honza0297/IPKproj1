@@ -1,26 +1,31 @@
 import argparse
 import socket
 import re
-
 import xml.etree.ElementTree as XML
 from lxml import etree
 
 # Default values defined here:
-
+default_city = "Brno"
+default_api_key = "5e565f7756eebd498b0df0b91471a3b7"
 port_num = 80
 host_name = "api.openweathermap.org"
-example_data = "GET /data/2.5/weather?q=Brno&units=metric&mode=xml&appid=5e565f7756eebd498b0df0b91471a3b7 HTTP/1.1\r\n"
+broadcast_data = "GET /data/2.5/weather?q={0}&units=metric&mode=xml&appid={1} HTTP/1.1\r\nHost: {2}\r\n\r\n"
 
-# regexes are defined here:
-
+# regex is defined here:
+xml_regex = re.compile('(<\?xml.*)')
 
 
 def get_args():
+    """
+    Function gets args via argparse module.
+    :return: argparse tuple with arguments
+    """
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
 
-    # Kvuli nekompatibilnimu zadavani argumentu s argparse nutno odstranit prefixy "name=" - nova fce?
+    # Because of some incompatibility between argparse and task, need to delete prefixes like "city="
+    # BTW: Right way in argparse is "--city="
     if args.api_key.startswith("api_key=") and args.city.startswith("city="):
         args.api_key = args.api_key[len("api_key="):]
         args.city = args.city[len("city="):]
@@ -31,14 +36,20 @@ def get_args():
 
 
 def add_args(parser):
+    """
+    Function adds arguments to argparse parser.
+    :param parser: Argparse parser
+    :return: None
+    """
     parser.add_argument(dest="api_key", help="api_key")
     parser.add_argument(dest="city", help="Specifies in which city you want to display weather")
+
 
 def print_result(values):
     """
     Function prints the values extracted from response in given format.
     :param values: dict-like structure, proper keys you can see below
-    :return: nothing
+    :return: None
     """
     print("City: ", values["city"]["name"])
     print("Clouds: ", values["clouds"]["name"])
@@ -48,47 +59,50 @@ def print_result(values):
     print("Wind speed: ", values["speed"]["value"])
     print("Wind degree: ", values["direction"]["value"])
 
+
+def prepare_socket():
+    """
+    function prepares socket and connect to host.
+    :return: None
+    """
+    ret_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ret_socket.connect((host_name, port_num))
+    return ret_socket
+
+
+def send_and_get_msg(sock: socket, values):
+    """
+    Function handles communication between client and server and returns it.
+    :param sock: socket for comm
+    :param values: values to specify city and api_key used in communication
+    :return: server response
+    """
+    sock.send(bytes(broadcast_data.format(values.city or default_city,
+                                          values.api_key or default_api_key,
+                                          host_name), "utf-8"))
+    ret = str(sock.recv(2048))
+    return ret
+
+
+def parse_to_xml(resp: str):
+    """
+    Function parses server response to a XML
+    :param resp: server response
+    :return: XML tree
+    """
+    xml_part = xml_regex.search(resp).group(1)
+    xml_part = xml_part.replace("\\n", "\n")  # EOL is "\\n" instead of newline char "\n", so need to fix it
+
+    # Parse that to XML tree
+    parser = etree.XMLParser(recover=True)
+    xml_tree = XML.ElementTree(XML.fromstring(xml_part, parser=parser))
+    return xml_tree
+
+
+# Main body starts here
 args = get_args()
-
-
-# Here becomes the FUN :)
-
-# Prepare socket and send request
-api_socket= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-api_socket.connect((host_name, port_num))
-api_socket.send(b"GET /data/2.5/weather?q=Ushuaia&units=metric&mode=xml&appid=5e565f7756eebd498b0df0b91471a3b7 HTTP/1.1\r\nHost: www.api.openweathermap.org\r\n\r\n\n\r\n")
-
-# Get response and cast it to string
-response = str(api_socket.recv(4096))
-xml_data = re.search("(\<\?xml.*)", response).group(1)
-xml_data = xml_data.replace("\\n", "")
-xml_data = xml_data+" "
-#print(xml_data)
-
-# Parse that f... file O:) into XML
-
-parser = etree.XMLParser(recover=True)
-pokus = XML.ElementTree(XML.fromstring(xml_data,parser=parser))
-
-#print(type(pokus))
-dict_for_print = dict()
-
-
-
-for node in pokus.iter():
-    #print(node.tag, node.attrib)
-    dict_for_print[node.tag] = node.attrib or None
-print_result(dict_for_print)
-exit()
-
-"""
-dict_for_print = dict()
-dict_for_print["city"] = args.city
-dict_for_print["clouds"] = re.search("", xml_data).group(1) or None
-dict_for_print["temperature"] = None
-dict_for_print["humidity"] = None
-dict_for_print["pressure"] = None
-dict_for_print["wind"] = None
-dict_for_print["direction"] = None
-"""
-print_result(dict_for_print)
+api_socket = prepare_socket()
+response = send_and_get_msg(api_socket, args)
+xml_data = parse_to_xml(response)
+dict_for_print = {node.tag: node.attrib for node in xml_data.iter()}  # XML tree to dict
+print_result(dict_for_print)  # And finally print the result :)
