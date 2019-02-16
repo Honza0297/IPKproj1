@@ -1,0 +1,40 @@
+GET /data/2.5/weather?q=London&mode=xml&appid=5e565f7756eebd498b0df0b91471a3b7 HTTP/1.1
+Host: api.openweathermap.org
+Connection: keep-alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 OPR/57.0.3098.116
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+Accept-Encoding: gzip, deflate
+Accept-Language: cs-CZ,cs;q=0.9
+Cookie: __utmc=124807636; __utma=124807636.973193932.1549392154.1549979603.1549981715.8; __utmz=124807636.1549981715.8.4.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); _ga=GA1.2.973193932.1549392154; _gid=GA1.2.495210136.1549982704; __utmb=124807636.15.9.1549983284630
+
+HTTP/1.1 200 OK
+Server: openresty
+Date: Tue, 12 Feb 2019 15:17:33 GMT
+Content-Type: application/xml; charset=utf-8
+Content-Length: 781
+Connection: keep-alive
+X-Cache-Key: /data/2.5/weather?mode=xml&q=london
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Methods: GET, POST
+
+<?xml version="1.0" encoding="UTF-8"?>
+<current><city id="2643743" name="London"><coord lon="-0.13" lat="51.51"></coord><country>GB</country><sun rise="2019-02-12T07:19:32" set="2019-02-12T17:10:41"></sun></city><temperature value="283.35" min="282.15" max="284.15" unit="kelvin"></temperature><humidity value="71" unit="%"></humidity><pressure value="1033" unit="hPa"></pressure><wind><speed value="4.6" name="Gentle Breeze"></speed><gusts></gusts><direction value="220" code="SW" name="Southwest"></direction></wind><clouds value="40" name="scattered clouds"></clouds><visibility value="10000"></visibility><precipitation mode="no"></precipitation><weather number="802" value="scattered clouds" icon="03d"></weather><lastupdate value="2019-02-12T14:20:00"></lastupdate></current>GET /favicon.ico HTTP/1.1
+Host: api.openweathermap.org
+Connection: keep-alive
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 OPR/57.0.3098.116
+Accept: image/webp,image/apng,image/*,*/*;q=0.8
+Referer: http://api.openweathermap.org/data/2.5/weather?q=London&mode=xml&appid=5e565f7756eebd498b0df0b91471a3b7
+Accept-Encoding: gzip, deflate
+Accept-Language: cs-CZ,cs;q=0.9
+Cookie: __utmc=124807636; __utma=124807636.973193932.1549392154.1549979603.1549981715.8; __utmz=124807636.1549981715.8.4.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); _ga=GA1.2.973193932.1549392154; _gid=GA1.2.495210136.1549982704; __utmb=124807636.15.9.1549983284630
+
+HTTP/1.1 204 No Content
+Server: openresty
+Date: Tue, 12 Feb 2019 15:17:33 GMT
+Connection: keep-alive
+

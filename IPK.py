@@ -2,7 +2,6 @@ import argparse
 import socket
 import re
 import xml.etree.ElementTree as XML
-from lxml import etree
 
 # Default values defined here:
 default_city = "Brno"
@@ -12,7 +11,7 @@ host_name = "api.openweathermap.org"
 broadcast_data = "GET /data/2.5/weather?q={0}&units=metric&mode=xml&appid={1} HTTP/1.1\r\nHost: {2}\r\n\r\n"
 
 # regex is defined here:
-xml_regex = re.compile('(<\?xml.*)')
+xml_regex = re.compile("(<\?xml.*(?<!'))")
 
 
 def get_args():
@@ -23,14 +22,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
-
-    # Because of some incompatibility between argparse and task, need to delete prefixes like "city="
-    # BTW: Right way in argparse is "--city="
-    if args.api_key.startswith("api_key=") and args.city.startswith("city="):
-        args.api_key = args.api_key[len("api_key="):]
-        args.city = args.city[len("city="):]
-    else:
-        raise Exception("Bad structure of input args. Type --help for help")
+    args.city.replace(" ", "%20")  # Because I need to change spaces to their HTML? codes
 
     return args
 
@@ -41,8 +33,8 @@ def add_args(parser):
     :param parser: Argparse parser
     :return: None
     """
-    parser.add_argument(dest="api_key", help="api_key")
-    parser.add_argument(dest="city", help="Specifies in which city you want to display weather")
+    parser.add_argument("--api_key", dest="api_key", help="api_key")
+    parser.add_argument("--city", dest="city", help="Specifies in which city you want to display weather")
 
 
 def print_result(values):
@@ -94,8 +86,8 @@ def parse_to_xml(resp: str):
     xml_part = xml_part.replace("\\n", "\n")  # EOL is "\\n" instead of newline char "\n", so need to fix it
 
     # Parse that to XML tree
-    parser = etree.XMLParser(recover=True)
-    xml_tree = XML.ElementTree(XML.fromstring(xml_part, parser=parser))
+    #parser = etree.XMLParser(recover=True)
+    xml_tree = XML.fromstring(xml_part)
     return xml_tree
 
 
