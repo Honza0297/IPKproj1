@@ -2,16 +2,19 @@ import argparse
 import socket
 import re
 import xml.etree.ElementTree as XML
+import sys  # Only for sys.stderr
 
-# Default values defined here:
-default_city = "Brno"
-default_api_key = "5e565f7756eebd498b0df0b91471a3b7"
+# Default values defined here, default city and default_api_key for run without params:
+# default_city = "Brno"
+# default_api_key = "5e565f7756eebd498b0df0b91471a3b7"
 port_num = 80
 host_name = "api.openweathermap.org"
 broadcast_data = "GET /data/2.5/weather?q={0}&units=metric&mode=xml&appid={1} HTTP/1.1\r\nHost: {2}\r\n\r\n"
 
-# regex is defined here:
-xml_regex = re.compile("(<\?xml.*(?<!'))")
+# regexes are defined here:
+# old regex for xml preparation from response: "(<\?xml.*(?<!'))"
+xml_regex = re.compile("(<\?xml.*\n.*)")
+code_regex = re.compile("([0-9]{3})")
 
 
 def get_args():
@@ -22,7 +25,9 @@ def get_args():
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
-    args.city.replace(" ", "%20")  # Because I need to change spaces to their HTML? codes
+    if not(args.api_key and args.city):
+        print("Arguments were not given properly.", file=sys.stderr)
+        exit(1)
 
     return args
 
@@ -45,20 +50,25 @@ def print_result(values):
     """
     print("City: ", values["city"]["name"])
     print("Clouds: ", values["clouds"]["name"])
-    print("Temperature: ", values["temperature"]["value"], "degrees Celsius")
-    print("Humidity: ", values["humidity"]["value"],"%")
+    print("Temperature: ", values["temperature"]["value"], "°C")
+    print("Humidity: ", values["humidity"]["value"], "%")
     print("Pressure: ", values["pressure"]["value"], "hPa")
-    print("Wind speed: ", values["speed"]["value"])
-    print("Wind degree: ", values["direction"]["value"])
+    print("Wind speed: ", values["speed"]["value"], "km/h")
+    print("Wind degree: ", values["direction"]["value"], "degrees")
 
 
 def prepare_socket():
     """
-    function prepares socket and connect to host.
+    Function prepares socket and connect to host.
     :return: None
     """
     ret_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ret_socket.connect((host_name, port_num))
+    try:
+        ret_socket.connect((host_name, port_num))
+    except Exception as err:
+        print("The connection failed. Details: \n", err.__repr__(), file=sys.stderr)
+        exit(1)
+
     return ret_socket
 
 
@@ -69,10 +79,20 @@ def send_and_get_msg(sock: socket, values):
     :param values: values to specify city and api_key used in communication
     :return: server response
     """
-    sock.send(bytes(broadcast_data.format(values.city or default_city,
-                                          values.api_key or default_api_key,
-                                          host_name), "utf-8"))
-    ret = str(sock.recv(2048))
+    ret = None
+    try:
+        sock.send(bytes(broadcast_data.format(values.city,
+                                              values.api_key,
+                                              host_name), "utf-8"))
+    except Exception as err:
+        print("Failed to send a request. Details:\n", err.__repr__(), file=sys.stderr)
+        exit(1)
+
+    try:
+        ret = str(sock.recv(2048), "utf-8")
+    except Exception as err:
+        print("An exception during receiving a response has occurred. Details: \n", err.__repr__(), file=sys.stderr)
+        exit(1)
     return ret
 
 
@@ -86,15 +106,40 @@ def parse_to_xml(resp: str):
     xml_part = xml_part.replace("\\n", "\n")  # EOL is "\\n" instead of newline char "\n", so need to fix it
 
     # Parse that to XML tree
-    #parser = etree.XMLParser(recover=True)
-    xml_tree = XML.fromstring(xml_part)
+    xml_tree = None
+    try:
+        xml_tree = XML.fromstring(xml_part)
+    except Exception as err:
+        print("An Exception has occurred during XML conversion. Details: \n", err.__repr__(), file=sys.stderr)
+        exit(1)
+
     return xml_tree
+
+
+def check_err(resp):
+    """
+    Function checks the response for problems
+    :param resp: response of the server. Can be None
+    :return: Code of
+    """
+    resp_ret_code = re.search(code_regex, resp).group(1)
+    if int(resp_ret_code) == 200:
+
+        return 0
+    else:
+        return resp_ret_code
 
 
 # Main body starts here
 args = get_args()
 api_socket = prepare_socket()
 response = send_and_get_msg(api_socket, args)
+api_socket.close()
+err_code = check_err(response)
+if err_code:
+    print("HTTP response error occurred. Fail code: ", err_code, file=sys.stderr)
+    exit(1)
+
 xml_data = parse_to_xml(response)
 dict_for_print = {node.tag: node.attrib for node in xml_data.iter()}  # XML tree to dict
 print_result(dict_for_print)  # And finally print the result :)
